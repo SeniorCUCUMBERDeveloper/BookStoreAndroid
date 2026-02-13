@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material3.Icon
@@ -56,20 +57,24 @@ fun BookRowItem(
         )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = book.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            SelectionContainer {
+                Text(
+                    text = book.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Spacer(Modifier.height(2.dp))
-            Text(
-                text = book.author,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            SelectionContainer {
+                Text(
+                    text = book.author,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Spacer(Modifier.height(4.dp))
             Text(
                 text = formatPrice(book.priceRub),
@@ -99,12 +104,14 @@ fun BookSmallCard(
                 .fillMaxWidth()
                 .aspectRatio(0.72f)
         )
-        Text(
-            text = book.title,
-            style = MaterialTheme.typography.titleSmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
+        SelectionContainer {
+            Text(
+                text = book.title,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         Text(
             text = formatPrice(book.priceRub),
             style = MaterialTheme.typography.bodySmall,
