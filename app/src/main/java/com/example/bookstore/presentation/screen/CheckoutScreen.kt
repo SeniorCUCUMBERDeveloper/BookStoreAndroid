@@ -39,7 +39,6 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun CheckoutScreen(
     onBack: () -> Unit,
-    onDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val viewModel: CheckoutViewModel = koinViewModel()
@@ -52,7 +51,6 @@ fun CheckoutScreen(
         snackbarHostState.showSnackbar(m)
         viewModel.clearMessage()
     }
-
     val total = items.sumOf { it.book.priceRub * it.quantity }
 
     Scaffold(
@@ -94,16 +92,23 @@ fun CheckoutScreen(
             item { OutlinedTextField(ui.email, viewModel::setEmail, modifier = Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true) }
             item { OutlinedTextField(ui.address, viewModel::setAddress, modifier = Modifier.fillMaxWidth(), label = { Text("Адрес доставки") }) }
 
+            if (ui.orderId != null) {
+                item {
+                    Text(
+                        text = "Заказ успешно оформлен: ${ui.orderId}",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+
             item {
-                if (ui.orderId != null) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Номер заказа: ${ui.orderId}")
-                        Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Готово") }
-                    }
-                } else {
-                    Button(onClick = viewModel::submit, modifier = Modifier.fillMaxWidth(), enabled = !ui.loading) {
-                        if (ui.loading) CircularProgressIndicator() else Text("Подтвердить заказ")
-                    }
+                Button(
+                    onClick = viewModel::submit,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !ui.loading && ui.orderId == null
+                ) {
+                    if (ui.loading) CircularProgressIndicator() else Text("Подтвердить заказ")
                 }
             }
             item { Spacer(Modifier.padding(8.dp)) }

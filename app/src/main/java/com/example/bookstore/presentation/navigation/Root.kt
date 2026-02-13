@@ -162,10 +162,7 @@ fun Root(
                 )
             }
             composable(Routes.Checkout) {
-                CheckoutScreen(
-                    onBack = { navController.popBackStack() },
-                    onDone = { navController.popBackStack(Routes.Search, false) }
-                )
+                CheckoutScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.Orders) {
                 OrderHistoryScreen(
