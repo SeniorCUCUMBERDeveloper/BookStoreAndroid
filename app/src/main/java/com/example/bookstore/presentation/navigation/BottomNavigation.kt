@@ -40,17 +40,6 @@ private val bottomDestinations = listOf(
     )
 )
 
-private val bottomBarVisibleRoutes = setOf(
-    Routes.Search,
-    Routes.Checkout,
-    Routes.Settings,
-    Routes.Profile
-)
-
-internal fun shouldShowBottomBar(currentRoute: String?): Boolean {
-    return currentRoute in bottomBarVisibleRoutes
-}
-
 @Composable
 internal fun BookStoreBottomBar(
     currentRoute: String?,
