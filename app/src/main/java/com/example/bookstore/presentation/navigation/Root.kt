@@ -8,9 +8,10 @@ import android.net.NetworkRequest
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,13 +19,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
-import androidx.navigation.NavType
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.bookstore.domain.model.UserSession
@@ -41,12 +43,28 @@ import com.example.bookstore.presentation.screen.SettingsScreen
 import com.example.bookstore.presentation.viewmodel.ProfileViewModel
 import org.koin.androidx.compose.koinViewModel
 
+private data class BottomDestination(
+    val route: String,
+    val label: String,
+    val icon: @Composable () -> Unit
+)
+
 private fun NavHostController.navigateSafe(route: String) {
     val entry = currentBackStackEntry ?: return
     if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return
 
     navigate(route) {
         launchSingleTop = true
+    }
+}
+
+private fun NavHostController.navigateToBottomTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
     }
 }
 
@@ -74,9 +92,20 @@ fun Root(
 
     val navController = rememberNavController()
     val profileViewModel: ProfileViewModel = koinViewModel()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+
     Scaffold(
         modifier = modifier,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        bottomBar = {
+            if (shouldShowBottomBar(currentRoute)) {
+                BookStoreBottomBar(
+                    currentRoute = currentRoute,
+                    onNavigate = navController::navigateToBottomTab
+                )
+            }
+        }
     ) { innerPadding ->
         NavHost(
             navController = navController,
@@ -91,10 +120,7 @@ fun Root(
                             navController.navigate("${Routes.SearchResults}/${Uri.encode(normalized)}")
                         }
                     },
-                    onOpenBook = { id -> navController.navigate("${Routes.Book}/$id") },
-                    onOpenProfile = { navController.navigateSafe(Routes.Profile) },
-                    onOpenSettings = { navController.navigateSafe(Routes.Settings) },
-                    onOpenCheckout = { navController.navigateSafe(Routes.Checkout) }
+                    onOpenBook = { id -> navController.navigate("${Routes.Book}/$id") }
                 )
             }
             composable(
@@ -124,12 +150,22 @@ fun Root(
             }
             composable(Routes.About) { AboutScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.Faq) { FaqScreen(onBack = { navController.popBackStack() }) }
-            composable(route = "${Routes.Book}/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) { backStackEntry ->
+            composable(
+                route = "${Routes.Book}/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.StringType })
+            ) { backStackEntry ->
                 val id = backStackEntry.arguments?.getString("id").orEmpty()
-                BookDetailScreen(bookId = id, onBack = { navController.popBackStack() }, onCheckout = { navController.navigateSafe(Routes.Checkout) })
+                BookDetailScreen(
+                    bookId = id,
+                    onBack = { navController.popBackStack() },
+                    onCheckout = { navController.navigateSafe(Routes.Checkout) }
+                )
             }
             composable(Routes.Checkout) {
-                CheckoutScreen(onBack = { navController.popBackStack() }, onDone = { navController.popBackStack(Routes.Search, false) })
+                CheckoutScreen(
+                    onBack = { navController.popBackStack() },
+                    onDone = { navController.popBackStack(Routes.Search, false) }
+                )
             }
             composable(Routes.Orders) {
                 OrderHistoryScreen(

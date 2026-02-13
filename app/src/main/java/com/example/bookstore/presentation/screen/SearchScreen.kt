@@ -8,10 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,9 +35,6 @@ import org.koin.androidx.compose.koinViewModel
 fun SearchScreen(
     onOpenSearchResults: (String) -> Unit,
     onOpenBook: (String) -> Unit,
-    onOpenProfile: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenCheckout: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = koinViewModel()
 ) {
@@ -51,12 +45,7 @@ fun SearchScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("BookStore") },
-                actions = {
-                    IconButton(onClick = onOpenCheckout) { Icon(Icons.Outlined.ShoppingCart, null) }
-                    IconButton(onClick = onOpenSettings) { Icon(Icons.Default.Settings, null) }
-                    IconButton(onClick = onOpenProfile) { Icon(Icons.Default.AccountCircle, null) }
-                }
+                title = { Text("BookStore") }
             )
         },
         modifier = modifier
