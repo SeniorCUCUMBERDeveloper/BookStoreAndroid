@@ -59,6 +59,15 @@ class CheckoutViewModel(
     val state: StateFlow<CheckoutUiState> = _state
 
     init {
+        loadProfileIntoState()
+    }
+
+    fun refreshProfile() {
+        loadProfileIntoState()
+    }
+
+    private fun loadProfileIntoState() {
+
         viewModelScope.launch {
             val profile = runCatching { userRepository.getProfile() }.getOrNull()
             _state.update {
@@ -116,4 +125,8 @@ class CheckoutViewModel(
     }
 
     fun clearMessage() { _state.update { it.copy(message = null) } }
+
+    fun clearOrderResult() {
+        _state.update { it.copy(orderId = null) }
+    }
 }

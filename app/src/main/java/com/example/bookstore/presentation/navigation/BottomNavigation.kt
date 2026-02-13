@@ -2,6 +2,7 @@ package com.example.bookstore.presentation.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Icon
@@ -17,6 +18,11 @@ private data class NavBarDestination(
 )
 
 private val bottomDestinations = listOf(
+    NavBarDestination(
+        route = Routes.Search,
+        label = "Главная",
+        icon = { Icon(Icons.Default.Home, contentDescription = "Главная") }
+    ),
     NavBarDestination(
         route = Routes.Checkout,
         label = "Корзина",
