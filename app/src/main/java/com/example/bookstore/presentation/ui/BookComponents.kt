@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -92,7 +92,6 @@ fun BookSmallCard(
 ) {
     Column(
         modifier = modifier
-            .width(140.dp)
             .clip(RoundedCornerShape(Dimens.cardRadius))
             .clickable { onClick() }
             .padding(8.dp),
@@ -108,6 +107,7 @@ fun BookSmallCard(
             Text(
                 text = book.title,
                 style = MaterialTheme.typography.titleSmall,
+                minLines = 2,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )

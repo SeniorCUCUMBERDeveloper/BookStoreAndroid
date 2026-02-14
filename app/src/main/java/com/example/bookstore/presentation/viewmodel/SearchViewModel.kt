@@ -28,6 +28,9 @@ class SearchViewModel(
     val featuredHits: StateFlow<List<Book>> =
         booksRepository.observeFeaturedHits().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val featuredBasic: StateFlow<List<Book>> =
+        booksRepository.observeFeaturedBasic().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val results: StateFlow<List<Book>> =
         booksRepository.observeSearchResults().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

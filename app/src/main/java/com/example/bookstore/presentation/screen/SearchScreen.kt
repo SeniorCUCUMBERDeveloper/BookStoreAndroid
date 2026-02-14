@@ -1,9 +1,12 @@
 package com.example.bookstore.presentation.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -41,30 +44,34 @@ fun SearchScreen(
     val ui by viewModel.state.collectAsState()
     val featuredNew by viewModel.featuredNew.collectAsState()
     val featuredHits by viewModel.featuredHits.collectAsState()
+    val featuredBasic by viewModel.featuredBasic.collectAsState()
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("BookStore") }
-            )
+            Column {
+                TopAppBar(
+                    title = { Text("BookStore") }
+                )
+                SearchInputRow(
+                    query = ui.query,
+                    loading = ui.loading,
+                    onQueryChange = viewModel::setQuery,
+                    onSubmit = { onOpenSearchResults(ui.query.trim()) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Dimens.screenPadding)
+                        .padding(bottom = 8.dp)
+                )
+            }
         },
         modifier = modifier
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .padding(padding)
-                .padding(Dimens.screenPadding),
+                .padding(horizontal = Dimens.screenPadding),
             verticalArrangement = Arrangement.spacedBy(Dimens.blockSpacing)
         ) {
-            item {
-                SearchInputRow(
-                    query = ui.query,
-                    loading = ui.loading,
-                    onQueryChange = viewModel::setQuery,
-                    onSubmit = { onOpenSearchResults(ui.query.trim()) }
-                )
-            }
-
             if (ui.loading) {
                 item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
             }
@@ -93,6 +100,15 @@ fun SearchScreen(
                     )
                 }
             }
+
+            if (featuredBasic.isNotEmpty()) {
+                item {
+                    BasicSelectionSection(
+                        books = featuredBasic,
+                        onOpenBook = onOpenBook
+                    )
+                }
+            }
         }
     }
 }
@@ -102,10 +118,11 @@ private fun SearchInputRow(
     query: String,
     loading: Boolean,
     onQueryChange: (String) -> Unit,
-    onSubmit: () -> Unit
+    onSubmit: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -131,7 +148,38 @@ private fun FeaturedSection(
     Text(title, style = MaterialTheme.typography.titleLarge)
     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         items(books) { book ->
-            BookSmallCard(book = book, onClick = { onOpenBook(book.id) })
+            BookSmallCard(book = book, onClick = { onOpenBook(book.id) }, modifier = Modifier.width(140.dp))
+        }
+    }
+}
+
+@Composable
+private fun BasicSelectionSection(
+    books: List<Book>,
+    onOpenBook: (String) -> Unit
+) {
+    val rows = books.chunked(2)
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        rows.forEach { rowBooks ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                rowBooks.forEach { book ->
+                    BookSmallCard(
+                        book = book,
+                        onClick = { onOpenBook(book.id) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                if (rowBooks.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }
