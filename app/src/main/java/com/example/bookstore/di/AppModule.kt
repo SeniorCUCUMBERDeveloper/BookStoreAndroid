@@ -8,15 +8,18 @@ import com.example.bookstore.data.local.BookStoreDatabase
 import com.example.bookstore.data.prefs.ThemeRepositoryImpl
 import com.example.bookstore.data.repository.BooksRepositoryImpl
 import com.example.bookstore.data.repository.CartRepositoryImpl
+import com.example.bookstore.data.repository.FaqRepositoryImpl
 import com.example.bookstore.domain.repository.BooksRepository
 import com.example.bookstore.domain.repository.CartRepository
 import com.example.bookstore.domain.repository.OrdersRepository
 import com.example.bookstore.domain.repository.ThemeRepository
+import com.example.bookstore.domain.repository.FaqRepository
 import com.example.bookstore.domain.repository.ReviewsRepository
 import com.example.bookstore.domain.repository.UserRepository
 import com.example.bookstore.presentation.viewmodel.AuthViewModel
 import com.example.bookstore.presentation.viewmodel.BookDetailViewModel
 import com.example.bookstore.presentation.viewmodel.CheckoutViewModel
+import com.example.bookstore.presentation.viewmodel.FaqViewModel
 import com.example.bookstore.presentation.viewmodel.ProfileViewModel
 import com.example.bookstore.presentation.viewmodel.SearchViewModel
 import com.example.bookstore.presentation.viewmodel.SessionViewModel
@@ -38,6 +41,7 @@ val appModule = module {
             .build()
     }
     single { get<BookStoreDatabase>().viewedDao() }
+    single { get<BookStoreDatabase>().faqDao() }
 
     singleOf(::BooksRepositoryImpl) bind BooksRepository::class
     singleOf(::UserRepositoryImpl) bind UserRepository::class
@@ -45,6 +49,7 @@ val appModule = module {
     singleOf(::ThemeRepositoryImpl) bind ThemeRepository::class
     singleOf(::CartRepositoryImpl) bind CartRepository::class
     singleOf(::ReviewsRepositoryImpl) bind ReviewsRepository::class
+    singleOf(::FaqRepositoryImpl) bind FaqRepository::class
 
     viewModel { AuthViewModel(userRepository = get<UserRepository>()) }
     viewModel { SearchViewModel(booksRepository = get<BooksRepository>()) }
@@ -74,4 +79,5 @@ val appModule = module {
     }
     viewModel { SessionViewModel(userRepository = get<UserRepository>()) }
     viewModel { ThemeViewModel(themeRepository = get<ThemeRepository>()) }
+    viewModel { FaqViewModel(faqRepository = get<FaqRepository>()) }
 }

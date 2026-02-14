@@ -9,13 +9,18 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.example.bookstore.presentation.theme.Dimens
 import com.example.bookstore.presentation.viewmodel.ThemeViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -31,10 +36,21 @@ fun SettingsScreen(
     val darkTheme by themeViewModel.darkTheme.collectAsState(initial = isSystemInDarkTheme())
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Настройки") }
-            )
+            Surface(
+                color = MaterialTheme.colorScheme.background,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
+                TopAppBar(
+                    title = { Text("Настройки") },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    )
+                )
+            }
         },
+        containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier
     ) { padding ->
         Column(

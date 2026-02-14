@@ -3,18 +3,31 @@ package com.example.bookstore.presentation.screen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import com.example.bookstore.domain.model.FaqItem
 import com.example.bookstore.presentation.theme.Dimens
+import com.example.bookstore.presentation.viewmodel.FaqViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,12 +38,66 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) = InfoScreenT
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FaqScreen(onBack: () -> Unit, modifier: Modifier = Modifier) = InfoScreenTemplate("FAQ", onBack, modifier) {
-    Text("По всем вопросам обращайтесь на почту: support@bookstore.app")
-    Text("Оплата заказов сейчас доступна только наличными при получении.")
-    Text("Заказы принимаются ежедневно с 09:00 до 21:00.")
-    Text("Обычно доставка занимает 1–3 дня в зависимости от адреса.")
-    Text("Отменить заказ можно до передачи в доставку через экран Профиль → Заказы.")
+fun FaqScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: FaqViewModel = koinViewModel()
+) {
+    val items by viewModel.items.collectAsState()
+    val state by viewModel.state.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("FAQ") },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }
+            )
+        },
+        modifier = modifier
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(Dimens.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(Dimens.blockSpacing)
+        ) {
+            if (state.loading && items.isEmpty()) {
+                item { CircularProgressIndicator() }
+            }
+
+            if (state.error != null) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.elementSpacing)) {
+                        Text(state.error ?: "", color = MaterialTheme.colorScheme.error)
+                        Button(onClick = viewModel::syncFaqOnce) {
+                            Text("Повторить")
+                        }
+                    }
+                }
+            }
+
+            items(items, key = { it.id }) { faq ->
+                FaqCard(item = faq)
+            }
+        }
+    }
+}
+
+@Composable
+private fun FaqCard(item: FaqItem) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(Dimens.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(Dimens.elementSpacing)
+        ) {
+            Text(text = item.question, style = MaterialTheme.typography.titleMedium)
+            Text(text = item.answer, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
