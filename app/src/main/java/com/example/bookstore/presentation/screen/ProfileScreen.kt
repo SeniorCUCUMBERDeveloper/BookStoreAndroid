@@ -40,22 +40,19 @@ import org.koin.androidx.compose.koinViewModel
 fun ProfileScreen(
     onOpenBook: (String) -> Unit,
     onOpenOrders: () -> Unit,
+    onOpenFaq: () -> Unit,
+    onOpenAbout: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = koinViewModel()
 ) {
     val ui = viewModel.state.collectAsState().value
     val viewed = viewModel.viewed.collectAsState().value
-    val ordersCount = viewModel.orders.collectAsState(initial = emptyList()).value.size
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(ui.message) {
         val m = ui.message ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(m)
         viewModel.clearMessage()
-    }
-
-    LaunchedEffect(Unit) {
-        viewModel.refreshProfile()
     }
 
     Scaffold(
@@ -110,7 +107,18 @@ fun ProfileScreen(
 
             item {
                 Button(onClick = onOpenOrders) {
-                    Text(if (ordersCount > 0) "История заказов ($ordersCount)" else "История заказов")
+                    Text("История заказов")
+                }
+            }
+
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onOpenFaq, modifier = Modifier.weight(1f)) {
+                        Text("FAQ")
+                    }
+                    Button(onClick = onOpenAbout, modifier = Modifier.weight(1f)) {
+                        Text("О нас")
+                    }
                 }
             }
 

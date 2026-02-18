@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookstore.domain.model.Book
 import com.example.bookstore.domain.model.Order
+import com.example.bookstore.domain.model.UserProfile
 import com.example.bookstore.domain.model.UserSession
 import com.example.bookstore.domain.repository.BooksRepository
 import com.example.bookstore.domain.repository.OrdersRepository
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
@@ -91,7 +93,7 @@ class ProfileViewModel(
 
         _state.value = ProfileUiState(email = session.email)
 
-        val profile = userRepository.getProfile()
+        val profile = loadProfileWithRetry()
         if (profile != null) {
             val loadedDraft = ProfileDraft(
                 name = profile.name,
@@ -110,6 +112,15 @@ class ProfileViewModel(
             _state.value = ProfileUiState(email = session.email)
         }
         isProfileLoaded = true
+    }
+
+    private suspend fun loadProfileWithRetry(): UserProfile? {
+        repeat(6) { attempt ->
+            val profile = userRepository.getProfile()
+            if (profile != null) return profile
+            if (attempt < 5) delay(250)
+        }
+        return null
     }
 
     fun setName(v: String) = updateDraft { it.copy(name = v, message = null) }
@@ -139,8 +150,12 @@ class ProfileViewModel(
             deliveryAddress = _state.value.deliveryAddress.trim()
         )
         if (draft == lastSavedDraft) return
+
+        val isNameChanged = draft.name != lastSavedDraft.name
         if (draft.name.isBlank()) {
-            _state.update { it.copy(message = "Имя не может быть пустым") }
+            if (isNameChanged) {
+                _state.update { it.copy(message = "Имя не может быть пустым") }
+            }
             return
         }
 

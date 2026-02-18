@@ -9,7 +9,10 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -19,16 +22,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.bookstore.domain.model.UserSession
 import com.example.bookstore.presentation.screen.AboutScreen
 import com.example.bookstore.presentation.screen.AuthScreen
 import com.example.bookstore.presentation.screen.BookDetailScreen
@@ -39,7 +41,9 @@ import com.example.bookstore.presentation.screen.ProfileScreen
 import com.example.bookstore.presentation.screen.SearchResultsScreen
 import com.example.bookstore.presentation.screen.SearchScreen
 import com.example.bookstore.presentation.screen.SettingsScreen
+import com.example.bookstore.presentation.screen.ThemeSettingsScreen
 import com.example.bookstore.presentation.viewmodel.ProfileViewModel
+import com.example.bookstore.presentation.viewmodel.SessionState
 import org.koin.androidx.compose.koinViewModel
 
 private enum class AppTab(val route: String) {
@@ -59,12 +63,26 @@ private fun appTabFromRoute(route: String): AppTab = when (route) {
 
 @Composable
 fun Root(
-    session: UserSession?,
+    sessionState: SessionState,
     modifier: Modifier = Modifier
 ) {
-    if (session == null) {
-        AuthScreen(modifier = modifier)
-        return
+    when (sessionState) {
+        SessionState.Loading -> {
+            Box(
+                modifier = modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return
+        }
+
+        SessionState.Unauthorized -> {
+            AuthScreen(modifier = modifier)
+            return
+        }
+
+        is SessionState.Authorized -> Unit
     }
 
     val context = LocalContext.current
@@ -214,6 +232,8 @@ private fun ProfileTabNavHost(
             ProfileScreen(
                 onOpenBook = { id -> navController.navigate("${Routes.Book}/$id") },
                 onOpenOrders = { navController.navigate(Routes.Orders) },
+                onOpenFaq = { navController.navigate(Routes.Faq) },
+                onOpenAbout = { navController.navigate(Routes.About) },
                 viewModel = profileViewModel
             )
         }
@@ -234,6 +254,8 @@ private fun ProfileTabNavHost(
                 viewModel = profileViewModel
             )
         }
+        composable(Routes.About) { AboutScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.Faq) { FaqScreen(onBack = { navController.popBackStack() }) }
     }
 }
 
@@ -248,13 +270,11 @@ private fun SettingsTabNavHost(
         modifier = modifier
     ) {
         composable(Routes.Settings) {
-            SettingsScreen(
-                onOpenFaq = { navController.navigate(Routes.Faq) },
-                onOpenAbout = { navController.navigate(Routes.About) }
-            )
+            SettingsScreen(onOpenThemeSettings = { navController.navigate(Routes.SettingsTheme) })
         }
-        composable(Routes.About) { AboutScreen(onBack = { navController.popBackStack() }) }
-        composable(Routes.Faq) { FaqScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.SettingsTheme) {
+            ThemeSettingsScreen(onBack = { navController.popBackStack() })
+        }
     }
 }
 

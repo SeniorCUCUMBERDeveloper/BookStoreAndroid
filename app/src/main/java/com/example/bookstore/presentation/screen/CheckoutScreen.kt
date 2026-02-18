@@ -98,7 +98,7 @@ fun CheckoutScreen(
                 item { Text("Итого: ${formatPrice(total)}", style = MaterialTheme.typography.titleMedium) }
             }
 
-            item { OutlinedTextField(ui.name, viewModel::setName, modifier = Modifier.fillMaxWidth(), label = { Text("ФИО") }, singleLine = true) }
+            item { OutlinedTextField(ui.name, viewModel::setName, modifier = Modifier.fillMaxWidth(), label = { Text("Имя") }, singleLine = true) }
             item { OutlinedTextField(ui.phone, viewModel::setPhone, modifier = Modifier.fillMaxWidth(), label = { Text("Телефон") }, singleLine = true) }
             item { OutlinedTextField(ui.email, viewModel::setEmail, modifier = Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true) }
             item { OutlinedTextField(ui.address, viewModel::setAddress, modifier = Modifier.fillMaxWidth(), label = { Text("Адрес доставки") }) }
