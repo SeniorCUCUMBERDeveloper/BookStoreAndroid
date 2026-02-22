@@ -10,17 +10,13 @@ import com.example.bookstore.domain.repository.BooksRepository
 import com.example.bookstore.domain.repository.OrdersRepository
 import com.example.bookstore.domain.repository.UserRepository
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
@@ -48,17 +44,13 @@ class ProfileViewModel(
     private val _state = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = _state
 
+    private val _viewed = MutableStateFlow<List<Book>>(emptyList())
+    val viewed: StateFlow<List<Book>> = _viewed
+
     private var lastSavedDraft = ProfileDraft(name = "", phone = "", deliveryAddress = "")
     private var isProfileLoaded = false
     private var autosaveJob: Job? = null
-
-    val viewed: StateFlow<List<Book>> =
-        userRepository.session
-            .map { it?.uid }
-            .flatMapLatest { uid ->
-                if (uid == null) flowOf(emptyList()) else booksRepository.observeViewed(uid, limit = 12)
-            }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    private var viewedJob: Job? = null
 
     val orders: StateFlow<List<Order>> =
         ordersRepository.observeMyOrders(limit = 30)
@@ -69,16 +61,26 @@ class ProfileViewModel(
             userRepository.session
                 .distinctUntilChanged { old, new -> old?.uid == new?.uid }
                 .collect { session ->
+                    startViewedCollection(session?.uid)
                     applySessionProfile(session)
                 }
         }
     }
 
-    fun refreshProfile() {
-        viewModelScope.launch {
-            applySessionProfile(userRepository.session.first())
+    private fun startViewedCollection(uid: String?) {
+        viewedJob?.cancel()
+
+        if (uid == null) {
+            _viewed.value = emptyList()
+            return
+        }
+
+        viewedJob = viewModelScope.launch {
+            booksRepository.observeViewed(uid, limit = 12)
+                .collect { books -> _viewed.value = books }
         }
     }
+
 
     private suspend fun applySessionProfile(session: UserSession?) {
         autosaveJob?.cancel()
@@ -138,7 +140,7 @@ class ProfileViewModel(
         if (!isProfileLoaded) return
         autosaveJob?.cancel()
         autosaveJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(700)
+            delay(700)
             saveProfileIfChanged(showSuccessMessage = false)
         }
     }
@@ -199,6 +201,7 @@ class ProfileViewModel(
 
     override fun onCleared() {
         autosaveJob?.cancel()
+        viewedJob?.cancel()
         super.onCleared()
     }
 }

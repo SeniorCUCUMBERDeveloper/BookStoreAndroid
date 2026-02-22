@@ -6,12 +6,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -60,7 +59,7 @@ fun ProfileScreen(
             TopAppBar(
                 title = { Text("Профиль") },
                 actions = {
-                    IconButton(onClick = viewModel::logout) { Icon(Icons.Default.ExitToApp, null) }
+                    IconButton(onClick = viewModel::logout) { Icon(Icons.AutoMirrored.Filled.ExitToApp, null) }
                 }
             )
         },

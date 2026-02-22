@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,7 +28,14 @@ import org.koin.androidx.compose.koinViewModel
 class MainActivity : ComponentActivity() {
 
     private val notificationsPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+            val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            val askedCount = prefs.getInt(KEY_NOTIFICATIONS_PERMISSION_ASKED_COUNT, 0)
+            prefs.edit()
+                .putInt(KEY_NOTIFICATIONS_PERMISSION_ASKED_COUNT, askedCount + 1)
+                .putLong(KEY_NOTIFICATIONS_PERMISSION_LAST_ASKED_AT, SystemClock.elapsedRealtime())
+                .apply()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,23 +74,29 @@ class MainActivity : ComponentActivity() {
     private fun requestNotificationsPermissionOnFirstLaunchIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
 
-        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        val alreadyRequested = prefs.getBoolean(KEY_NOTIFICATIONS_PERMISSION_REQUESTED, false)
-        if (alreadyRequested) return
-
         val permissionGranted = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.POST_NOTIFICATIONS
         ) == PackageManager.PERMISSION_GRANTED
+        if (permissionGranted) return
 
-        if (!permissionGranted) {
-            prefs.edit().putBoolean(KEY_NOTIFICATIONS_PERMISSION_REQUESTED, true).apply()
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val askedCount = prefs.getInt(KEY_NOTIFICATIONS_PERMISSION_ASKED_COUNT, 0)
+        val lastAskedAt = prefs.getLong(KEY_NOTIFICATIONS_PERMISSION_LAST_ASKED_AT, 0L)
+        val shouldShowRationale = shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
+        val reaskCooldownPassed = (SystemClock.elapsedRealtime() - lastAskedAt) >= NOTIFICATIONS_REASK_COOLDOWN_MS
+
+        val canAskNow = askedCount == 0 || (shouldShowRationale && reaskCooldownPassed)
+        if (canAskNow) {
             notificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
     private companion object {
         const val PREFS_NAME = "bookstore_prefs"
-        const val KEY_NOTIFICATIONS_PERMISSION_REQUESTED = "notifications_permission_requested"
+        const val KEY_NOTIFICATIONS_PERMISSION_ASKED_COUNT = "notifications_permission_asked_count"
+        const val KEY_NOTIFICATIONS_PERMISSION_LAST_ASKED_AT = "notifications_permission_last_asked_at"
+
+        const val NOTIFICATIONS_REASK_COOLDOWN_MS = 7L * 24 * 60 * 60 * 1000
     }
 }

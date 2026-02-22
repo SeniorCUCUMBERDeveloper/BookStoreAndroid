@@ -2,7 +2,6 @@ package com.example.bookstore.data.firebase
 
 import com.example.bookstore.domain.model.Order
 import com.example.bookstore.domain.model.OrderItem
-import com.example.bookstore.domain.repository.BooksRepository
 import com.example.bookstore.domain.repository.OrdersRepository
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -10,14 +9,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 class OrdersRepositoryImpl(
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore,
-    private val booksRepository: BooksRepository
+    private val firestore: FirebaseFirestore
 ) : OrdersRepository {
 
     override fun observeMyOrders(limit: Int): Flow<List<Order>> = callbackFlow {
@@ -84,17 +81,25 @@ class OrdersRepositoryImpl(
     ): String {
         val uid = auth.currentUser?.uid ?: throw IllegalStateException("Not authorized")
         val orderId = UUID.randomUUID().toString()
-        val orderItems = items.mapNotNull { (bookId, qty) ->
-            val book = booksRepository.observeBook(bookId).firstOrNull() ?: return@mapNotNull null
+        val orderItems = items.map { (bookId, qty) ->
+            val catalogDoc = firestore.collection("catalog").document(bookId).get().await()
+            if (!catalogDoc.exists()) {
+                throw IllegalStateException("Книга не найдена")
+            }
+
+            val title = catalogDoc.getString("title")?.trim().orEmpty()
+            if (title.isBlank()) {
+                throw IllegalStateException("Книга не найдена")
+            }
+
+            val priceRub = catalogDoc.getLong("priceRub")?.toInt() ?: 0
+
             mapOf(
-                "bookId" to book.id,
-                "title" to book.title,
-                "priceRub" to book.priceRub,
+                "bookId" to bookId,
+                "title" to title,
+                "priceRub" to priceRub,
                 "quantity" to qty
             )
-        }
-        if (orderItems.isEmpty()) {
-            throw IllegalStateException("Книга не найдена")
         }
         val total = orderItems.sumOf { ((it["priceRub"] as? Number)?.toInt() ?: 0) * ((it["quantity"] as? Number)?.toInt() ?: 1) }
         val data = hashMapOf(

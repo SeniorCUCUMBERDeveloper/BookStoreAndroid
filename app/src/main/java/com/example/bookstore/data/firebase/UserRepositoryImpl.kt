@@ -110,7 +110,6 @@ class UserRepositoryImpl(
     private suspend fun ensureProfile(name: String? = null, email: String? = null) {
         val user = auth.currentUser ?: return
         val finalEmail = email ?: user.email.orEmpty()
-        val normalizedName = name?.trim().orEmpty()
         val ref = firestore.collection("users").document(user.uid)
         val snap = ref.get().await()
 
@@ -120,12 +119,12 @@ class UserRepositoryImpl(
         )
 
         if (!snap.exists()) {
-            updates["name"] = name.orEmpty()
+            updates["name"] = name?.trim().orEmpty()
             updates["phone"] = ""
             updates["deliveryAddress"] = ""
         } else {
             if (!name.isNullOrBlank() && snap.getString("name").isNullOrBlank()) {
-                updates["name"] = name
+                updates["name"] = name.trim()
             }
             if (snap.getString("phone") == null) updates["phone"] = ""
             if (snap.getString("deliveryAddress") == null) updates["deliveryAddress"] = ""

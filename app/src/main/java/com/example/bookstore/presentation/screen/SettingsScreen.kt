@@ -25,9 +25,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import com.example.bookstore.domain.model.ThemeMode
 import com.example.bookstore.presentation.theme.Dimens
 import com.example.bookstore.presentation.viewmodel.ThemeLoadState
@@ -40,6 +44,8 @@ fun SettingsScreen(
     onOpenThemeSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+
     Scaffold(
         topBar = {
             Surface(
@@ -71,6 +77,20 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Тема приложения")
+            }
+
+            Button(
+                onClick = {
+                    context.startActivity(
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null)
+                        )
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Настройки уведомлений")
             }
         }
     }
