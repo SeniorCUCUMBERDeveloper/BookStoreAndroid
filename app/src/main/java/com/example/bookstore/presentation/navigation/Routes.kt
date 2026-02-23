@@ -8,6 +8,7 @@ object Routes {
     const val Checkout = "checkout"
     const val Orders = "orders"
     const val Settings = "settings"
+    const val SettingsTheme = "settings_theme"
     const val About = "about"
     const val Faq = "faq"
 }

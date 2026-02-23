@@ -8,9 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
@@ -84,7 +85,7 @@ fun BookDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text(book?.title ?: "Книга", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } }
             )
         },
         modifier = modifier
@@ -97,8 +98,12 @@ fun BookDetailScreen(
             verticalArrangement = Arrangement.spacedBy(Dimens.blockSpacing)
         ) {
             BookCover(imageUrl = b.imageUrl, modifier = Modifier.fillMaxWidth().height(260.dp))
-            Text(b.title, style = MaterialTheme.typography.headlineSmall)
-            Text(b.author, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            SelectionContainer {
+                Text(b.title, style = MaterialTheme.typography.headlineSmall)
+            }
+            SelectionContainer {
+                Text(b.author, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (reviewsCount == 0) {
                 Text("Нет оценок (0)", color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
@@ -136,7 +141,9 @@ private fun DescriptionSection(description: String?) {
     if (descriptionText.isBlank()) {
         Text("Описание отсутствует", color = MaterialTheme.colorScheme.onSurfaceVariant)
     } else {
-        Text(descriptionText)
+        SelectionContainer {
+            Text(descriptionText)
+        }
     }
 }
 

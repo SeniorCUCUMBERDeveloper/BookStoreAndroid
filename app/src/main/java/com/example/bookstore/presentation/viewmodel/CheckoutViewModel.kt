@@ -7,13 +7,10 @@ import com.example.bookstore.domain.repository.BooksRepository
 import com.example.bookstore.domain.repository.CartRepository
 import com.example.bookstore.domain.repository.OrdersRepository
 import com.example.bookstore.domain.repository.UserRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -39,26 +36,49 @@ class CheckoutViewModel(
     private val cartRepository: CartRepository
 ) : ViewModel() {
 
-    val items: StateFlow<List<CheckoutItem>> = cartRepository.lines
-        .flatMapLatest { lines ->
-            val ids = lines.map { it.bookId }.distinct()
-            if (ids.isEmpty()) {
-                flowOf(emptyList())
-            } else {
-                combine(ids.map(booksRepository::observeBook)) { books ->
-                    val byId = ids.zip(books.toList()).toMap()
-                    lines.mapNotNull { line ->
-                        byId[line.bookId]?.let { CheckoutItem(it, line.quantity) }
-                    }
-                }
-            }
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    private val _items = MutableStateFlow<List<CheckoutItem>>(emptyList())
+    val items: StateFlow<List<CheckoutItem>> = _items
 
     private val _state = MutableStateFlow(CheckoutUiState())
     val state: StateFlow<CheckoutUiState> = _state
 
+    private var observeItemsJob: Job? = null
+
     init {
+        observeCheckoutItems()
+        loadProfileIntoState()
+    }
+
+    private fun observeCheckoutItems() {
+        viewModelScope.launch {
+            cartRepository.lines.collect { lines ->
+                observeItemsJob?.cancel()
+
+                val ids = lines.map { it.bookId }.distinct()
+                if (ids.isEmpty()) {
+                    _items.value = emptyList()
+                    return@collect
+                }
+
+                observeItemsJob = launch {
+                    combine(ids.map(booksRepository::observeBook)) { books ->
+                        val byId = ids.zip(books.toList()).toMap()
+                        lines.mapNotNull { line ->
+                            byId[line.bookId]?.let { CheckoutItem(it, line.quantity) }
+                        }
+                    }.collect { checkoutItems ->
+                        _items.value = checkoutItems
+                    }
+                }
+            }
+        }
+    }
+
+    fun refreshProfile() {
+        loadProfileIntoState()
+    }
+
+    private fun loadProfileIntoState() {
         viewModelScope.launch {
             val profile = runCatching { userRepository.getProfile() }.getOrNull()
             _state.update {
@@ -116,4 +136,13 @@ class CheckoutViewModel(
     }
 
     fun clearMessage() { _state.update { it.copy(message = null) } }
+
+    fun clearOrderResult() {
+        _state.update { it.copy(orderId = null) }
+    }
+
+    override fun onCleared() {
+        observeItemsJob?.cancel()
+        super.onCleared()
+    }
 }

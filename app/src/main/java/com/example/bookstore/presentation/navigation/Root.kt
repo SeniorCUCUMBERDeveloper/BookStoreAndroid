@@ -8,26 +8,29 @@ import android.net.NetworkRequest
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.Lifecycle
-import androidx.navigation.NavType
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.bookstore.domain.model.UserSession
 import com.example.bookstore.presentation.screen.AboutScreen
 import com.example.bookstore.presentation.screen.AuthScreen
 import com.example.bookstore.presentation.screen.BookDetailScreen
@@ -38,26 +41,48 @@ import com.example.bookstore.presentation.screen.ProfileScreen
 import com.example.bookstore.presentation.screen.SearchResultsScreen
 import com.example.bookstore.presentation.screen.SearchScreen
 import com.example.bookstore.presentation.screen.SettingsScreen
+import com.example.bookstore.presentation.screen.ThemeSettingsScreen
 import com.example.bookstore.presentation.viewmodel.ProfileViewModel
+import com.example.bookstore.presentation.viewmodel.SessionState
 import org.koin.androidx.compose.koinViewModel
 
-private fun NavHostController.navigateSafe(route: String) {
-    val entry = currentBackStackEntry ?: return
-    if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return
+private enum class AppTab(val route: String) {
+    Home(Routes.Search),
+    Checkout(Routes.Checkout),
+    Settings(Routes.Settings),
+    Profile(Routes.Profile)
+}
 
-    navigate(route) {
-        launchSingleTop = true
-    }
+private fun appTabFromRoute(route: String): AppTab = when (route) {
+    Routes.Search -> AppTab.Home
+    Routes.Checkout -> AppTab.Checkout
+    Routes.Settings -> AppTab.Settings
+    Routes.Profile -> AppTab.Profile
+    else -> AppTab.Home
 }
 
 @Composable
 fun Root(
-    session: UserSession?,
+    sessionState: SessionState,
     modifier: Modifier = Modifier
 ) {
-    if (session == null) {
-        AuthScreen(modifier = modifier)
-        return
+    when (sessionState) {
+        SessionState.Loading -> {
+            Box(
+                modifier = modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return
+        }
+
+        SessionState.Unauthorized -> {
+            AuthScreen(modifier = modifier)
+            return
+        }
+
+        is SessionState.Authorized -> Unit
     }
 
     val context = LocalContext.current
@@ -72,71 +97,199 @@ fun Root(
         }
     }
 
-    val navController = rememberNavController()
+
+    var currentTab by remember { mutableStateOf(AppTab.Home) }
+
+    val homeNavController = rememberNavController()
+    val checkoutNavController = rememberNavController()
+    val settingsNavController = rememberNavController()
+    val profileNavController = rememberNavController()
+
     val profileViewModel: ProfileViewModel = koinViewModel()
+
+    BackHandler {
+        val currentController = when (currentTab) {
+            AppTab.Home -> homeNavController
+            AppTab.Checkout -> checkoutNavController
+            AppTab.Settings -> settingsNavController
+            AppTab.Profile -> profileNavController
+        }
+
+        val atTabRoot = currentController.currentDestination?.route == currentTab.route
+        if (atTabRoot) {
+            if (currentTab != AppTab.Home) currentTab = AppTab.Home
+            return@BackHandler
+        }
+
+        currentController.popBackStack()
+    }
+
     Scaffold(
         modifier = modifier,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        bottomBar = {
+            BookStoreBottomBar(
+                currentRoute = currentTab.route,
+                onNavigate = { route -> currentTab = appTabFromRoute(route) }
+            )
+        }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Routes.Search,
-            modifier = Modifier.padding(innerPadding)
-        ) {
-            composable(Routes.Search) {
-                SearchScreen(
-                    onOpenSearchResults = { query ->
-                        val normalized = query.trim()
-                        if (normalized.isNotBlank()) {
-                            navController.navigate("${Routes.SearchResults}/${Uri.encode(normalized)}")
-                        }
-                    },
-                    onOpenBook = { id -> navController.navigate("${Routes.Book}/$id") },
-                    onOpenProfile = { navController.navigateSafe(Routes.Profile) },
-                    onOpenSettings = { navController.navigateSafe(Routes.Settings) },
-                    onOpenCheckout = { navController.navigateSafe(Routes.Checkout) }
+        when (currentTab) {
+            AppTab.Home -> {
+                HomeTabNavHost(
+                    navController = homeNavController,
+                    modifier = Modifier.padding(innerPadding),
+                    onOpenCheckoutTab = { currentTab = AppTab.Checkout }
                 )
             }
-            composable(
-                route = "${Routes.SearchResults}/{query}",
-                arguments = listOf(navArgument("query") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val query = Uri.decode(backStackEntry.arguments?.getString("query").orEmpty())
-                SearchResultsScreen(
-                    initialQuery = query,
-                    onBack = { navController.popBackStack() },
-                    onOpenBook = { id -> navController.navigate("${Routes.Book}/$id") }
+
+            AppTab.Checkout -> {
+                CheckoutTabNavHost(
+                    navController = checkoutNavController,
+                    modifier = Modifier.padding(innerPadding)
                 )
             }
-            composable(Routes.Profile) {
-                ProfileScreen(
-                    onOpenBook = { id -> navController.navigate("${Routes.Book}/$id") },
-                    onOpenOrders = { navController.navigateSafe(Routes.Orders) },
-                    viewModel = profileViewModel
+
+            AppTab.Settings -> {
+                SettingsTabNavHost(
+                    navController = settingsNavController,
+                    modifier = Modifier.padding(innerPadding)
                 )
             }
-            composable(Routes.Settings) {
-                SettingsScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenFaq = { navController.navigateSafe(Routes.Faq) },
-                    onOpenAbout = { navController.navigateSafe(Routes.About) }
+
+            AppTab.Profile -> {
+                ProfileTabNavHost(
+                    navController = profileNavController,
+                    modifier = Modifier.padding(innerPadding),
+                    profileViewModel = profileViewModel,
+                    onOpenCheckoutTab = { currentTab = AppTab.Checkout }
                 )
             }
-            composable(Routes.About) { AboutScreen(onBack = { navController.popBackStack() }) }
-            composable(Routes.Faq) { FaqScreen(onBack = { navController.popBackStack() }) }
-            composable(route = "${Routes.Book}/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) { backStackEntry ->
-                val id = backStackEntry.arguments?.getString("id").orEmpty()
-                BookDetailScreen(bookId = id, onBack = { navController.popBackStack() }, onCheckout = { navController.navigateSafe(Routes.Checkout) })
-            }
-            composable(Routes.Checkout) {
-                CheckoutScreen(onBack = { navController.popBackStack() }, onDone = { navController.popBackStack(Routes.Search, false) })
-            }
-            composable(Routes.Orders) {
-                OrderHistoryScreen(
-                    onBack = { navController.popBackStack() },
-                    viewModel = profileViewModel
-                )
-            }
+        }
+    }
+}
+
+@Composable
+private fun HomeTabNavHost(
+    navController: NavHostController,
+    modifier: Modifier,
+    onOpenCheckoutTab: () -> Unit
+) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.Search,
+        modifier = modifier
+    ) {
+        composable(Routes.Search) {
+            SearchScreen(
+                onOpenSearchResults = { query ->
+                    val normalized = query.trim()
+                    if (normalized.isNotBlank()) {
+                        navController.navigate("${Routes.SearchResults}/${Uri.encode(normalized)}")
+                    }
+                },
+                onOpenBook = { id -> navController.navigate("${Routes.Book}/$id") }
+            )
+        }
+        composable(
+            route = "${Routes.SearchResults}/{query}",
+            arguments = listOf(navArgument("query") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val query = Uri.decode(backStackEntry.arguments?.getString("query").orEmpty())
+            SearchResultsScreen(
+                initialQuery = query,
+                onBack = { navController.popBackStack() },
+                onOpenBook = { id -> navController.navigate("${Routes.Book}/$id") }
+            )
+        }
+        composable(
+            route = "${Routes.Book}/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id").orEmpty()
+            BookDetailScreen(
+                bookId = id,
+                onBack = { navController.popBackStack() },
+                onCheckout = onOpenCheckoutTab
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileTabNavHost(
+    navController: NavHostController,
+    modifier: Modifier,
+    profileViewModel: ProfileViewModel,
+    onOpenCheckoutTab: () -> Unit
+) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.Profile,
+        modifier = modifier
+    ) {
+        composable(Routes.Profile) {
+            ProfileScreen(
+                onOpenBook = { id -> navController.navigate("${Routes.Book}/$id") },
+                onOpenOrders = { navController.navigate(Routes.Orders) },
+                onOpenFaq = { navController.navigate(Routes.Faq) },
+                onOpenAbout = { navController.navigate(Routes.About) },
+                viewModel = profileViewModel
+            )
+        }
+        composable(
+            route = "${Routes.Book}/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id").orEmpty()
+            BookDetailScreen(
+                bookId = id,
+                onBack = { navController.popBackStack() },
+                onCheckout = onOpenCheckoutTab
+            )
+        }
+        composable(Routes.Orders) {
+            OrderHistoryScreen(
+                onBack = { navController.popBackStack() },
+                viewModel = profileViewModel
+            )
+        }
+        composable(Routes.About) { AboutScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.Faq) { FaqScreen(onBack = { navController.popBackStack() }) }
+    }
+}
+
+@Composable
+private fun SettingsTabNavHost(
+    navController: NavHostController,
+    modifier: Modifier
+) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.Settings,
+        modifier = modifier
+    ) {
+        composable(Routes.Settings) {
+            SettingsScreen(onOpenThemeSettings = { navController.navigate(Routes.SettingsTheme) })
+        }
+        composable(Routes.SettingsTheme) {
+            ThemeSettingsScreen(onBack = { navController.popBackStack() })
+        }
+    }
+}
+
+@Composable
+private fun CheckoutTabNavHost(
+    navController: NavHostController,
+    modifier: Modifier
+) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.Checkout,
+        modifier = modifier
+    ) {
+        composable(Routes.Checkout) {
+            CheckoutScreen()
         }
     }
 }

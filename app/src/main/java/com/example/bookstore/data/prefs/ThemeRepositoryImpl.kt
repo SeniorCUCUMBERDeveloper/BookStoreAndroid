@@ -1,36 +1,27 @@
 package com.example.bookstore.data.prefs
 
 import android.content.Context
-import android.content.res.Configuration
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.preferencesDataStore
+import com.example.bookstore.domain.model.ThemeMode
 import com.example.bookstore.domain.repository.ThemeRepository
+import com.example.bookstore.presentation.theme.ThemeModeApplier
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-
-private val Context.dataStore by preferencesDataStore(name = "settings")
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class ThemeRepositoryImpl(
-    private val context: Context
+    context: Context
 ) : ThemeRepository {
 
-    override val darkTheme: Flow<Boolean> =
-        context.dataStore.data.map { prefs ->
-            prefs[KEY_DARK_THEME] ?: isSystemInDarkTheme()
-        }
+    private val appContext = context.applicationContext
+    private val themeModeState = MutableStateFlow(ThemeModeStorage.read(appContext))
 
-    override suspend fun setDarkTheme(enabled: Boolean) {
-        context.dataStore.edit { it[KEY_DARK_THEME] = enabled }
-    }
+    override val themeMode: Flow<ThemeMode> = themeModeState.asStateFlow()
 
-    private companion object {
-        val KEY_DARK_THEME = booleanPreferencesKey("dark_theme")
-    }
+    override suspend fun setThemeMode(themeMode: ThemeMode) {
+        if (themeModeState.value == themeMode) return
 
-    private fun isSystemInDarkTheme(): Boolean {
-        val currentNightMode =
-            context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        return currentNightMode == Configuration.UI_MODE_NIGHT_YES
+        ThemeModeStorage.write(appContext, themeMode)
+        themeModeState.value = themeMode
+        ThemeModeApplier.apply(themeMode)
     }
 }

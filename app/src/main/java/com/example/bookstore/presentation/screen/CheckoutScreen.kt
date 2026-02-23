@@ -9,13 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -24,6 +20,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -38,8 +35,6 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckoutScreen(
-    onBack: () -> Unit,
-    onDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val viewModel: CheckoutViewModel = koinViewModel()
@@ -47,19 +42,33 @@ fun CheckoutScreen(
     val items by viewModel.items.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    LaunchedEffect(Unit) {
+        viewModel.refreshProfile()
+    }
+
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearMessage()
+        }
+    }
+
     LaunchedEffect(ui.message) {
         val m = ui.message ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(m)
         viewModel.clearMessage()
     }
-
+    LaunchedEffect(items, ui.orderId) {
+        if (items.isNotEmpty() && ui.orderId != null) {
+            viewModel.clearOrderResult()
+        }
+    }
     val total = items.sumOf { it.book.priceRub * it.quantity }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Оформление заказа") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }
+                title = { Text("Оформление заказа") }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -89,21 +98,28 @@ fun CheckoutScreen(
                 item { Text("Итого: ${formatPrice(total)}", style = MaterialTheme.typography.titleMedium) }
             }
 
-            item { OutlinedTextField(ui.name, viewModel::setName, modifier = Modifier.fillMaxWidth(), label = { Text("ФИО") }, singleLine = true) }
+            item { OutlinedTextField(ui.name, viewModel::setName, modifier = Modifier.fillMaxWidth(), label = { Text("Имя") }, singleLine = true) }
             item { OutlinedTextField(ui.phone, viewModel::setPhone, modifier = Modifier.fillMaxWidth(), label = { Text("Телефон") }, singleLine = true) }
             item { OutlinedTextField(ui.email, viewModel::setEmail, modifier = Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true) }
             item { OutlinedTextField(ui.address, viewModel::setAddress, modifier = Modifier.fillMaxWidth(), label = { Text("Адрес доставки") }) }
 
+            if (ui.orderId != null) {
+                item {
+                    Text(
+                        text = "Заказ успешно оформлен: ${ui.orderId}",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+
             item {
-                if (ui.orderId != null) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Номер заказа: ${ui.orderId}")
-                        Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Готово") }
-                    }
-                } else {
-                    Button(onClick = viewModel::submit, modifier = Modifier.fillMaxWidth(), enabled = !ui.loading) {
-                        if (ui.loading) CircularProgressIndicator() else Text("Подтвердить заказ")
-                    }
+                Button(
+                    onClick = viewModel::submit,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !ui.loading && ui.orderId == null
+                ) {
+                    if (ui.loading) CircularProgressIndicator() else Text("Подтвердить заказ")
                 }
             }
             item { Spacer(Modifier.padding(8.dp)) }

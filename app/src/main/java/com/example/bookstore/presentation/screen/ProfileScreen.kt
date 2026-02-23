@@ -6,12 +6,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -40,12 +39,13 @@ import org.koin.androidx.compose.koinViewModel
 fun ProfileScreen(
     onOpenBook: (String) -> Unit,
     onOpenOrders: () -> Unit,
+    onOpenFaq: () -> Unit,
+    onOpenAbout: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = koinViewModel()
 ) {
     val ui = viewModel.state.collectAsState().value
     val viewed = viewModel.viewed.collectAsState().value
-    val ordersCount = viewModel.orders.collectAsState(initial = emptyList()).value.size
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(ui.message) {
@@ -54,16 +54,12 @@ fun ProfileScreen(
         viewModel.clearMessage()
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.refreshProfile()
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Профиль") },
                 actions = {
-                    IconButton(onClick = viewModel::logout) { Icon(Icons.Default.ExitToApp, null) }
+                    IconButton(onClick = viewModel::logout) { Icon(Icons.AutoMirrored.Filled.ExitToApp, null) }
                 }
             )
         },
@@ -110,7 +106,18 @@ fun ProfileScreen(
 
             item {
                 Button(onClick = onOpenOrders) {
-                    Text(if (ordersCount > 0) "История заказов ($ordersCount)" else "История заказов")
+                    Text("История заказов")
+                }
+            }
+
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onOpenFaq, modifier = Modifier.weight(1f)) {
+                        Text("FAQ")
+                    }
+                    Button(onClick = onOpenAbout, modifier = Modifier.weight(1f)) {
+                        Text("О нас")
+                    }
                 }
             }
 

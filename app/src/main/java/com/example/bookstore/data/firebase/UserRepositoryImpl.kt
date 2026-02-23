@@ -9,7 +9,9 @@ import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -34,14 +36,23 @@ class UserRepositoryImpl(
     override suspend fun login(email: String, password: String) {
         mapAuthErrors {
             auth.signInWithEmailAndPassword(email, password).await()
-            runCatching { ensureProfile() }
+            val authName = auth.currentUser?.displayName?.trim().orEmpty()
+            runCatching { ensureProfile(name = authName.ifBlank { null }) }
         }
     }
 
     override suspend fun register(name: String, email: String, password: String) {
         mapAuthErrors {
             auth.createUserWithEmailAndPassword(email, password).await()
-            ensureProfile(name = name, email = email)
+            val trimmedName = name.trim()
+            if (trimmedName.isNotBlank()) {
+                auth.currentUser?.updateProfile(
+                    UserProfileChangeRequest.Builder()
+                        .setDisplayName(trimmedName)
+                        .build()
+                )?.await()
+            }
+            ensureProfile(name = trimmedName, email = email)
         }
     }
 
@@ -59,10 +70,14 @@ class UserRepositoryImpl(
         val user = auth.currentUser ?: return null
         return runCatching {
             val snap = firestore.collection("users").document(user.uid).get().await()
-            val name = snap.getString("name") ?: ""
+            if (!snap.exists()) return null
+
+            val fallbackName = user.displayName.orEmpty()
+            val name = snap.getString("name")?.takeIf { it.isNotBlank() } ?: fallbackName
             val email = snap.getString("email") ?: (user.email ?: "")
             val phone = snap.getString("phone") ?: ""
             val deliveryAddress = snap.getString("deliveryAddress") ?: ""
+
             UserProfile(
                 uid = user.uid,
                 name = name,
@@ -71,13 +86,7 @@ class UserRepositoryImpl(
                 deliveryAddress = deliveryAddress
             )
         }.getOrElse {
-            UserProfile(
-                uid = user.uid,
-                name = "",
-                email = user.email ?: "",
-                phone = "",
-                deliveryAddress = ""
-            )
+            null
         }
     }
 
@@ -103,15 +112,25 @@ class UserRepositoryImpl(
         val finalEmail = email ?: user.email.orEmpty()
         val ref = firestore.collection("users").document(user.uid)
         val snap = ref.get().await()
-        if (snap.exists()) return
-        val data = hashMapOf(
+
+        val updates = hashMapOf<String, Any>(
             "uid" to user.uid,
-            "name" to (name ?: ""),
-            "email" to finalEmail,
-            "phone" to "",
-            "deliveryAddress" to ""
+            "email" to finalEmail
         )
-        ref.set(data).await()
+
+        if (!snap.exists()) {
+            updates["name"] = name?.trim().orEmpty()
+            updates["phone"] = ""
+            updates["deliveryAddress"] = ""
+        } else {
+            if (!name.isNullOrBlank() && snap.getString("name").isNullOrBlank()) {
+                updates["name"] = name.trim()
+            }
+            if (snap.getString("phone") == null) updates["phone"] = ""
+            if (snap.getString("deliveryAddress") == null) updates["deliveryAddress"] = ""
+        }
+
+        ref.set(updates, SetOptions.merge()).await()
     }
 
     private fun FirebaseUser?.toSession(): UserSession? {

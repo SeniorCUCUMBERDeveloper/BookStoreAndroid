@@ -53,6 +53,10 @@ class BooksRepositoryImpl(
         books.filterBySectionKeywords(sectionKeywords = listOf("hit", "хит", "хиты", "featured_hit"))
     }
 
+    override fun observeFeaturedBasic(): Flow<List<Book>> = catalogBooks.map { books ->
+        books.filterBySectionKeywords(sectionKeywords = listOf("basic"))
+    }
+
     override fun observeSearchResults(): Flow<List<Book>> = combine(catalogBooks, searchQuery) { books, query ->
         if (query.isBlank()) {
             emptyList()
